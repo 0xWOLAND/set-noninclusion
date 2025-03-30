@@ -1,0 +1,20 @@
+[package]
+name = "set-noninclusion"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+p3-fri = "0.2.0"
+p3-baby-bear = "0.2.0"
+p3-challenger = "0.2.0"
+p3-commit = "0.2.0"
+p3-dft = "0.2.0"
+p3-field = "0.2.0"
+p3-matrix = "0.2.0"
+p3-merkle-tree = "0.2.0"
+p3-symmetric = "0.2.0"
+p3-poseidon2 = "0.2.0"
+rand = { version = "0.8", features = ["std_rng"] }
+rand_chacha = "0.3"
+itertools = "0.12"
+
