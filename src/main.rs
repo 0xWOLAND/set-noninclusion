@@ -4,12 +4,14 @@ use p3_challenger::{CanObserve, DuplexChallenger, FieldChallenger};
 use p3_commit::{ExtensionMmcs, Pcs, PolynomialSpace};
 use p3_dft::Radix2DitParallel;
 use p3_field::extension::BinomialExtensionField;
-use p3_field::{ExtensionField, Field};
+use p3_field::{ExtensionField, Field, PackedValue};
 use p3_fri::{FriConfig, TwoAdicFriPcs};
-use p3_matrix::dense::RowMajorMatrix;
+use p3_matrix::dense::{DenseMatrix, RowMajorMatrix};
 use p3_merkle_tree::FieldMerkleTreeMmcs;
 use p3_poseidon2::{Poseidon2, Poseidon2ExternalMatrixGeneral};
 use p3_symmetric::{PaddingFreeSponge, TruncatedPermutation};
+use p3_field::AbstractField;
+use p3_matrix::Matrix;
 use rand::distributions::{Distribution, Standard};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
@@ -20,7 +22,7 @@ fn seeded_rng() -> impl Rng {
 
 fn do_test_fri_pcs<Val, Challenge, Challenger, P>(
     (pcs, challenger): &(P, Challenger),
-    log_degrees_by_round: &[&[usize]],
+    polynomial: RowMajorMatrix<Val>,
 ) where
     P: Pcs<Challenge, Challenger>,
     P::Domain: PolynomialSpace<Val = Val>,
@@ -29,67 +31,35 @@ fn do_test_fri_pcs<Val, Challenge, Challenger, P>(
     Challenge: ExtensionField<Val>,
     Challenger: Clone + CanObserve<P::Commitment> + FieldChallenger<Val>,
 {
-    let num_rounds = log_degrees_by_round.len();
-    let mut rng = seeded_rng();
     let mut p_challenger = challenger.clone();
+    
+    // Create domain for our polynomial
+    let degree = polynomial.height();
+    let domain = pcs.natural_domain_for_degree(degree);
+    let domains_and_polys = vec![(domain, polynomial)];
 
-    let domains_and_polys_by_round = log_degrees_by_round
-        .iter()
-        .map(|log_degrees| {
-            log_degrees
-                .iter()
-                .map(|&log_degree| {
-                    let d = 1 << log_degree;
-                    let width = 5 + rng.gen_range(0..=10);
-                    (
-                        pcs.natural_domain_for_degree(d),
-                        RowMajorMatrix::<Val>::rand(&mut rng, d, width),
-                    )
-                })
-                .collect_vec()
-        })
-        .collect_vec();
+    // Commit to the polynomial
+    let (commit, data) = pcs.commit(domains_and_polys.clone());
+    p_challenger.observe_slice(&[commit.clone()]);
 
-    let (commits_by_round, data_by_round): (Vec<_>, Vec<_>) = domains_and_polys_by_round
-        .iter()
-        .map(|domains_and_polys| pcs.commit(domains_and_polys.clone()))
-        .unzip();
-    assert_eq!(commits_by_round.len(), num_rounds);
-    assert_eq!(data_by_round.len(), num_rounds);
-    p_challenger.observe_slice(&commits_by_round);
-
+    // Sample a random point for evaluation
     let zeta: Challenge = p_challenger.sample_ext_element();
+    let points = vec![vec![zeta]];
+    
+    // Open the polynomial at zeta
+    let data_and_points = vec![(&data, points)];
+    let (opening, proof) = pcs.open(data_and_points, &mut p_challenger);
 
-    let points_by_round = log_degrees_by_round
-        .iter()
-        .map(|log_degrees| vec![vec![zeta]; log_degrees.len()])
-        .collect_vec();
-    let data_and_points = data_by_round.iter().zip(points_by_round).collect();
-    let (opening_by_round, proof) = pcs.open(data_and_points, &mut p_challenger);
-    assert_eq!(opening_by_round.len(), num_rounds);
-
+    // Verify the opening
     let mut v_challenger = challenger.clone();
-    v_challenger.observe_slice(&commits_by_round);
+    v_challenger.observe_slice(&[commit.clone()]);
     let verifier_zeta: Challenge = v_challenger.sample_ext_element();
     assert_eq!(verifier_zeta, zeta);
 
-    let commits_and_claims_by_round = izip!(
-        commits_by_round,
-        domains_and_polys_by_round,
-        opening_by_round
-    )
-    .map(|(commit, domains_and_polys, openings)| {
-        let claims = domains_and_polys
-            .iter()
-            .zip(openings)
-            .map(|((domain, _), mat_openings)| (*domain, vec![(zeta, mat_openings[0].clone())]))
-            .collect_vec();
-        (commit, claims)
-    })
-    .collect_vec();
-    assert_eq!(commits_and_claims_by_round.len(), num_rounds);
+    let claims = vec![(domain, vec![(zeta, opening[0][0][0].clone())])];
+    let commits_and_claims = vec![(commit, claims)];
 
-    pcs.verify(commits_and_claims_by_round, &proof, &mut v_challenger)
+    pcs.verify(commits_and_claims, &proof, &mut v_challenger)
         .unwrap()
 }
 
@@ -126,7 +96,13 @@ fn main() {
     let pcs = MyPcs::new(Dft {}, val_mmcs, fri_config);
     let challenger = Challenger::new(perm);
 
-    // Run a simple test with a single round and single polynomial
-    do_test_fri_pcs(&(pcs, challenger), &[&[3]]);
+    // Create a predetermined polynomial
+    let degree = 8;
+    let width = 1;  // Single column matrix
+    let values: Vec<Val> = (0..degree).map(|i| Val::from_canonical_u32((i + 1) as u32)).collect();
+    let polynomial = RowMajorMatrix::new(values, width);
+
+    // Run the test with our predetermined polynomial
+    do_test_fri_pcs(&(pcs, challenger), polynomial);
     println!("Test passed successfully!");
 }
