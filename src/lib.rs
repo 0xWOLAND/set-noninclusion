@@ -41,7 +41,7 @@ fn do_test_fri_pcs<Val, Challenge, Challenger, P>(
     // Commit to the polynomial
     let (commit, data) = pcs.commit(domains_and_polys.clone());
     p_challenger.observe_slice(&[commit.clone()]);
-
+    
     // Sample a random point for evaluation
     let zeta: Challenge = p_challenger.sample_ext_element();
     let points = vec![vec![zeta]];
@@ -63,7 +63,10 @@ fn do_test_fri_pcs<Val, Challenge, Challenger, P>(
         .unwrap()
 }
 
-fn main() {
+#[cfg(test)]
+mod tests {
+    use super::*;
+
     // Define types
     type Val = BabyBear;
     type Challenge = BinomialExtensionField<Val, 4>;
@@ -76,33 +79,38 @@ fn main() {
     type Challenger = DuplexChallenger<Val, Perm, 16, 8>;
     type MyPcs = TwoAdicFriPcs<Val, Dft, ValMmcs, ChallengeMmcs>;
 
-    // Setup PCS
-    let mut rng = seeded_rng();
-    let perm = Perm::new_from_rng_128(
-        Poseidon2ExternalMatrixGeneral,
-        DiffusionMatrixBabyBear::default(),
-        &mut rng,
-    );
-    let hash = MyHash::new(perm.clone());
-    let compress = MyCompress::new(perm.clone());
-    let val_mmcs = ValMmcs::new(hash, compress);
-    let challenge_mmcs = ChallengeMmcs::new(val_mmcs.clone());
-    let fri_config = FriConfig {
-        log_blowup: 1,
-        num_queries: 10,
-        proof_of_work_bits: 8,
-        mmcs: challenge_mmcs,
-    };
-    let pcs = MyPcs::new(Dft {}, val_mmcs, fri_config);
-    let challenger = Challenger::new(perm);
+    fn setup_pcs() -> (MyPcs, Challenger) {
+        let mut rng = seeded_rng();
+        let perm = Perm::new_from_rng_128(
+            Poseidon2ExternalMatrixGeneral,
+            DiffusionMatrixBabyBear::default(),
+            &mut rng,
+        );
+        let hash = MyHash::new(perm.clone());
+        let compress = MyCompress::new(perm.clone());
+        let val_mmcs = ValMmcs::new(hash, compress);
+        let challenge_mmcs = ChallengeMmcs::new(val_mmcs.clone());
+        let fri_config = FriConfig {
+            log_blowup: 1,
+            num_queries: 10,
+            proof_of_work_bits: 8,
+            mmcs: challenge_mmcs,
+        };
+        let pcs = MyPcs::new(Dft {}, val_mmcs, fri_config);
+        let challenger = Challenger::new(perm);
+        (pcs, challenger)
+    }
 
-    // Create a predetermined polynomial
-    let degree = 8;
-    let width = 1;  // Single column matrix
-    let values: Vec<Val> = (0..degree).map(|i| Val::from_canonical_u32((i + 1) as u32)).collect();
-    let polynomial = RowMajorMatrix::new(values, width);
+    #[test]
+    fn test_fri_pcs_with_simple_polynomial() {
+        let degree = 8;
+        let width = 1;
+        let values: Vec<Val> = (0..degree)
+            .map(|i| Val::from_canonical_u32((i + 1) as u32))
+            .collect();
+        let polynomial = RowMajorMatrix::new(values, width);
 
-    // Run the test with our predetermined polynomial
-    do_test_fri_pcs(&(pcs, challenger), polynomial);
-    println!("Test passed successfully!");
+        let (pcs, challenger) = setup_pcs();
+        do_test_fri_pcs(&(pcs, challenger), polynomial);
+    }
 }
