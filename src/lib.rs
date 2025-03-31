@@ -42,21 +42,35 @@ fn do_test_fri_pcs<Val, Challenge, Challenger, P>(
     let (commit, data) = pcs.commit(domains_and_polys.clone());
     p_challenger.observe_slice(&[commit.clone()]);
     
-    // Sample a random point for evaluation
-    let zeta: Challenge = p_challenger.sample_ext_element();
-    let points = vec![vec![zeta]];
+    // Sample multiple random points for evaluation
+    let num_points = 3;
+    let zetas: Vec<Challenge> = (0..num_points)
+        .map(|_| p_challenger.sample_ext_element())
+        .collect();
+    let points = vec![zetas.clone()];
     
-    // Open the polynomial at zeta
+    // Open the polynomial at all zetas
     let data_and_points = vec![(&data, points)];
     let (opening, proof) = pcs.open(data_and_points, &mut p_challenger);
 
     // Verify the opening
     let mut v_challenger = challenger.clone();
     v_challenger.observe_slice(&[commit.clone()]);
-    let verifier_zeta: Challenge = v_challenger.sample_ext_element();
-    assert_eq!(verifier_zeta, zeta);
+    
+    // Verify that verifier samples the same points
+    let verifier_zetas: Vec<Challenge> = (0..num_points)
+        .map(|_| v_challenger.sample_ext_element())
+        .collect();
+    assert_eq!(verifier_zetas, zetas);
 
-    let claims = vec![(domain, vec![(zeta, opening[0][0][0].clone())])];
+    let claims = vec![(
+        domain,
+        zetas
+            .into_iter()
+            .zip(opening[0][0].iter())
+            .map(|(z, o)| (z, o.clone()))
+            .collect(),
+    )];
     let commits_and_claims = vec![(commit, claims)];
 
     pcs.verify(commits_and_claims, &proof, &mut v_challenger)
@@ -105,12 +119,15 @@ mod tests {
     fn test_fri_pcs_with_simple_polynomial() {
         let degree = 8;
         let width = 1;
-        let values: Vec<Val> = (0..degree)
-            .map(|i| Val::from_canonical_u32((i + 1) as u32))
-            .collect();
-        let polynomial = RowMajorMatrix::new(values, width);
+        let mut rng = seeded_rng();
+        for _ in 0..10 {
+            let values: Vec<Val> = (0..degree)
+                .map(|_| Val::from_canonical_u32(rng.gen_range(0..100)))
+                .collect();
+            let polynomial = RowMajorMatrix::new(values, width);
 
-        let (pcs, challenger) = setup_pcs();
-        do_test_fri_pcs(&(pcs, challenger), polynomial);
+            let (pcs, challenger) = setup_pcs();
+            do_test_fri_pcs(&(pcs, challenger), polynomial);
+        }
     }
 }
