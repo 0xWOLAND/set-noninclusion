@@ -1,165 +1,97 @@
-use alloy_sol_types::sol;
-use rand::thread_rng;
 use sha2::{Digest, Sha256};
-use sp1_hash2curve::{commit, HashToCurve};
-use substrate_bn::{AffineG1, Fq, Fr, G1};
+use sp1_hash2curve::commit;
+use substrate_bn::{AffineG1, Fr};
 
-sol! {
-    /// The public values encoded as a struct that can be easily deserialized inside Solidity.
-    struct PublicValuesStruct {
-        uint32 n;
-        uint32 a;
-        uint32 b;
-    }
-}
+fn vieta(roots: &[Fr]) -> Vec<Fr> {
+    roots.iter().fold(vec![Fr::one()], |coeffs, &r| {
+        let mut next = vec![Fr::zero(); coeffs.len() + 1];
 
-/// Compute the n'th fibonacci number (wrapping around on overflows), using normal Rust code.
-pub fn fibonacci(n: u32) -> (u32, u32) {
-    let mut a = 0u32;
-    let mut b = 1u32;
-    for _ in 0..n {
-        let c = a.wrapping_add(b);
-        a = b;
-        b = c;
-    }
-    (a, b)
-}
+        (0..coeffs.len()).for_each(|i| {
+            next[i + 1] = coeffs[i];
+            next[i] -= r * coeffs[i];
+        });
 
-fn vieta(vs: Vec<Fr>) -> Vec<Fr> {
-    vs.iter().fold(vec![Fr::one()], |coeffs, &v| {
-        let mut new_coeffs = vec![Fr::zero(); coeffs.len() + 1];
-
-        new_coeffs
-            .iter_mut()
-            .skip(1)
-            .zip(&coeffs)
-            .for_each(|(new, &old)| *new = old);
-
-        new_coeffs
-            .iter_mut()
-            .zip(&coeffs)
-            .for_each(|(new, &old)| *new = *new - v * old);
-
-        new_coeffs
+        next
     })
 }
 
-// Evaluate a polynomial given its roots
-fn eval(roots: Vec<Fr>, x: Fr) -> Fr {
-    roots.iter().fold(Fr::one(), |acc, &root| acc * (x - root))
+fn eval_poly_at_roots(roots: &[Fr], x: Fr) -> Fr {
+    roots.iter().fold(Fr::one(), |acc, &r| acc * (x - r))
 }
 
-pub fn insert(roots: Vec<Fr>, a_prev: AffineG1, r: Fr) -> AffineG1 {
+pub fn insert(roots: &[Fr], a_prev: AffineG1, r: Fr) -> Result<AffineG1, String> {
     let coeffs = vieta(roots);
     let p_i = commit(&coeffs, AffineG1::default(), r);
 
-    let mut p_i_bytes = [0u8; 64];
-    p_i.x()
-        .to_big_endian(&mut p_i_bytes[..32])
-        .expect("Failed to convert x to big endian");
-    p_i.y()
-        .to_big_endian(&mut p_i_bytes[32..])
-        .expect("Failed to convert y to big endian");
-
-    let mut a_prev_bytes = [0u8; 64];
-    a_prev
-        .x()
-        .to_big_endian(&mut a_prev_bytes[..32])
-        .expect("Failed to convert x to big endian");
-    a_prev
-        .y()
-        .to_big_endian(&mut a_prev_bytes[32..])
-        .expect("Failed to convert y to big endian");
-
-    let h = Sha256::new()
-        .chain_update(p_i_bytes)
-        .chain_update(a_prev_bytes)
-        .finalize();
-
-    let h = Fr::from_bytes_be_mod_order(&h[..]).expect("Failed to convert h to Fr");
-
-    a_prev * h + p_i
+    let h = hash_points(&p_i, &a_prev)?;
+    Ok(a_prev * h + p_i)
 }
 
-pub fn check_non_membership(roots: Vec<Fr>, v: Fr, r: Fr, s_prev: AffineG1) -> AffineG1 {
-    let alpha_i = eval(roots.clone(), v);
-
-    assert!(!alpha_i.is_zero());
+pub fn check_non_membership(
+    roots: &[Fr],
+    v: Fr,
+    r: Fr,
+    s_prev: AffineG1,
+) -> Result<AffineG1, String> {
+    let alpha = eval_poly_at_roots(roots, v);
+    if alpha.is_zero() {
+        return Err("Value is a member of the inserted set.".into());
+    }
 
     let coeffs = vieta(roots);
     let p_i = commit(&coeffs, AffineG1::default(), r);
-    let pp_i = p_i - AffineG1::default() * alpha_i;
+    let p_prime = p_i - AffineG1::default() * alpha;
 
-    let mut s_prev_bytes = [0u8; 64];
-    s_prev
-        .x()
-        .to_big_endian(&mut s_prev_bytes[..32])
-        .expect("Failed to convert x to big endian");
-    s_prev
-        .y()
-        .to_big_endian(&mut s_prev_bytes[32..])
-        .expect("Failed to convert y to big endian");
+    let h = hash_points(&s_prev, &p_prime)?;
+    Ok(s_prev * h + p_prime)
+}
 
-    let mut pp_i_bytes = [0u8; 64];
-    pp_i.x()
-        .to_big_endian(&mut pp_i_bytes[..32])
-        .expect("Failed to convert x to big endian");
-    pp_i.y()
-        .to_big_endian(&mut pp_i_bytes[32..])
-        .expect("Failed to convert y to big endian");
+fn hash_points(p1: &AffineG1, p2: &AffineG1) -> Result<Fr, String> {
+    let mut bytes = [0u8; 128];
 
-    let hh_i = Sha256::new()
-        .chain_update(s_prev_bytes)
-        .chain_update(pp_i_bytes)
-        .finalize();
+    p1.x()
+        .to_big_endian(&mut bytes[0..32])
+        .map_err(|_| "Failed to encode x1")?;
+    p1.y()
+        .to_big_endian(&mut bytes[32..64])
+        .map_err(|_| "Failed to encode y1")?;
+    p2.x()
+        .to_big_endian(&mut bytes[64..96])
+        .map_err(|_| "Failed to encode x2")?;
+    p2.y()
+        .to_big_endian(&mut bytes[96..128])
+        .map_err(|_| "Failed to encode y2")?;
 
-    let hh_i = Fr::from_bytes_be_mod_order(&hh_i[..]).expect("Failed to convert hh_i to Fr");
-
-    s_prev * hh_i + pp_i
+    let hash = Sha256::digest(bytes);
+    Fr::from_bytes_be_mod_order(&hash).map_err(|_| "Hash did not map to valid Fr element".into())
 }
 
 #[test]
-fn test_vieta() {
-    // Test with a simple case: roots at 1 and 2
-    // This should give us coefficients for (x-1)(x-2) = x^2 - 3x + 2
-    let one = Fr::from_slice(&[1u8]).unwrap();
-    let two = Fr::from_slice(&[2u8]).unwrap();
-    let three = Fr::from_slice(&[3u8]).unwrap();
-    let roots = vec![one, two];
-    let coeffs = vieta(roots);
+fn test_dynamic_non_membership_chain() -> Result<(), String> {
+    let mut a_prev = AffineG1::default();
+    let mut s_prev = AffineG1::default();
+    let r = Fr::from_slice(&[42u8]).map_err(|_| "invalid Fr")?;
+    let v = Fr::from_slice(&[99u8]).map_err(|_| "invalid Fr")?;
 
-    // The coefficients should be [2, -3, 1] (constant term, linear term, quadratic term)
-    assert_eq!(coeffs[0], two); // constant term
-    assert_eq!(coeffs[1], -three); // linear term
-    assert_eq!(coeffs[2], one); // quadratic term
-}
+    let steps = vec![[1u8, 2u8], [3u8, 4u8], [5u8, 6u8]];
 
-#[test]
-fn test_insert() {
-    let roots = vec![
-        Fr::from_slice(&[1u8]).unwrap(),
+    for bytes in steps {
+        let roots: Vec<Fr> = bytes
+            .iter()
+            .map(|b| Fr::from_slice(&[*b]).map_err(|_| "invalid Fr"))
+            .collect::<Result<_, _>>()?;
+
+        a_prev = insert(&roots, a_prev, r)?;
+        s_prev = check_non_membership(&roots, v, r, s_prev)?;
+    }
+
+    let bad_roots = vec![
+        Fr::from_slice(&[99u8]).unwrap(),
         Fr::from_slice(&[2u8]).unwrap(),
     ];
-    let a_prev = AffineG1::default();
-    let s_prev = AffineG1::default();
 
-    let r = Fr::from_slice(&[3u8]).unwrap();
-    let a_prev = insert(roots.clone(), a_prev, r);
+    a_prev = insert(&bad_roots, a_prev, r)?;
+    assert!(check_non_membership(&bad_roots, v, r, s_prev).is_err());
 
-    let v = Fr::from_slice(&[4u8]).unwrap();
-    let s_prev = check_non_membership(roots, v, r, s_prev);
-
-    println!("a_prev: {:?}", a_prev);
-    println!("s_prev: {:?}", s_prev);
-
-    let roots = vec![
-        Fr::from_slice(&[3u8]).unwrap(),
-        Fr::from_slice(&[4u8]).unwrap(),
-    ];
-    let v = Fr::from_slice(&[5u8]).unwrap();
-    let a_prev = insert(roots.clone(), a_prev, r);
-    let s_prev = check_non_membership(roots, v, r, s_prev);
-
-    println!("a_prev: {:?}", a_prev);
-    println!("s_prev: {:?}", s_prev);
+    Ok(())
 }

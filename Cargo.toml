@@ -9,4 +9,3 @@ resolver = "2"
 [workspace.dependencies]
 alloy-sol-types = "0.8"
 substrate-bn = { package = "substrate-bn-succinct", git = "https://github.com/sp1-patches/bn", branch = "release-v0.6.0" }
-rand = "0.8"
