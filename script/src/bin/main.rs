@@ -1,93 +1,66 @@
-// //! An end-to-end example of using the SP1 SDK to generate a proof of a program that can be executed
-// //! or have a core proof generated.
-// //!
-// //! You can run this script using the following command:
-// //! ```shell
-// //! RUST_LOG=info cargo run --release -- --execute
-// //! ```
-// //! or
-// //! ```shell
-// //! RUST_LOG=info cargo run --release -- --prove
-// //! ```
+use sp1_sdk::{include_elf, ProverClient, SP1Stdin};
+use substrate_bn::AffineG1;
 
-// use alloy_sol_types::SolType;
-// use clap::Parser;
-// use sp1_sdk::{include_elf, ProverClient, SP1Stdin};
+/// The ELF (executable and linkable format) file for the Succinct RISC-V zkVM.
+pub const NONINCLUSION_ELF: &[u8] = include_elf!("noninclusion-program");
 
-// /// The ELF (executable and linkable format) file for the Succinct RISC-V zkVM.
-// pub const FIBONACCI_ELF: &[u8] = include_elf!("fibonacci-program");
+fn main() {
+    // Setup the logger.
+    sp1_sdk::utils::setup_logger();
+    dotenv::dotenv().ok();
 
-// /// The arguments for the command.
-// #[derive(Parser, Debug)]
-// #[command(author, version, about, long_about = None)]
-// struct Args {
-//     #[arg(long)]
-//     execute: bool,
+    // Setup the prover client.
+    let client = ProverClient::from_env();
 
-//     #[arg(long)]
-//     prove: bool,
+    // Setup the inputs.
+    let mut stdin = SP1Stdin::new();
 
-//     #[arg(long, default_value = "20")]
-//     n: u32,
-// }
+    let n = 3;
 
-// fn main() {
-//     // Setup the logger.
-//     sp1_sdk::utils::setup_logger();
-//     dotenv::dotenv().ok();
+    let mut a_prev = AffineG1::default();
+    let mut a_prev_bytes = vec![0u8; 64];
+    a_prev.x().to_big_endian(&mut a_prev_bytes[..32]).unwrap();
+    a_prev.y().to_big_endian(&mut a_prev_bytes[32..64]).unwrap();
 
-//     // Parse the command line arguments.
-//     let args = Args::parse();
+    let mut s_prev = AffineG1::default();
+    let mut s_prev_bytes = vec![0u8; 64];
+    s_prev.x().to_big_endian(&mut s_prev_bytes[..32]).unwrap();
+    s_prev.y().to_big_endian(&mut s_prev_bytes[32..64]).unwrap();
 
-//     if args.execute == args.prove {
-//         eprintln!("Error: You must specify either --execute or --prove");
-//         std::process::exit(1);
-//     }
+    stdin.write(&n);
+    stdin.write_slice(&a_prev_bytes);
+    stdin.write_slice(&s_prev_bytes);
 
-//     // Setup the prover client.
-//     let client = ProverClient::from_env();
+    // Roots
+    (0..n).for_each(|i| {
+        let mut bytes = [0u8; 32];
+        bytes[0] = i as u8;
+        stdin.write_slice(&bytes);
+    });
 
-//     // Setup the inputs.
-//     let mut stdin = SP1Stdin::new();
-//     stdin.write(&args.n);
+    let mut v = [0u8; 32];
+    v[0] = 100;
 
-//     println!("n: {}", args.n);
+    let mut r = [0u8; 32];
+    r[0] = 1;
 
-//     if args.execute {
-//         // Execute the program
-//         let (output, report) = client.execute(FIBONACCI_ELF, &stdin).run().unwrap();
-//         println!("Program executed successfully.");
+    stdin.write_slice(&v);
+    stdin.write_slice(&r);
 
-//         // Read the output.
-//         let decoded = PublicValuesStruct::abi_decode(output.as_slice(), true).unwrap();
-//         let PublicValuesStruct { n, a, b } = decoded;
-//         println!("n: {}", n);
-//         println!("a: {}", a);
-//         println!("b: {}", b);
+    // Setup the program for proving.
+    let (pk, vk) = client.setup(NONINCLUSION_ELF);
 
-//         let (expected_a, expected_b) = fibonacci_lib::fibonacci(n);
-//         assert_eq!(a, expected_a);
-//         assert_eq!(b, expected_b);
-//         println!("Values are correct!");
+    client.execute(NONINCLUSION_ELF, &stdin).run().unwrap();
 
-//         // Record the number of cycles executed.
-//         println!("Number of cycles: {}", report.total_instruction_count());
-//     } else {
-//         // Setup the program for proving.
-//         let (pk, vk) = client.setup(FIBONACCI_ELF);
+    // // Generate the proof
+    // let proof = client
+    //     .prove(&pk, &stdin)
+    //     .run()
+    //     .expect("failed to generate proof");
 
-//         // Generate the proof
-//         let proof = client
-//             .prove(&pk, &stdin)
-//             .run()
-//             .expect("failed to generate proof");
+    // println!("Successfully generated proof!");
 
-//         println!("Successfully generated proof!");
-
-//         // Verify the proof.
-//         client.verify(&proof, &vk).expect("failed to verify proof");
-//         println!("Successfully verified proof!");
-//     }
-// }
-
-fn main() {}
+    // // Verify the proof.
+    // client.verify(&proof, &vk).expect("failed to verify proof");
+    // println!("Successfully verified proof!");
+}

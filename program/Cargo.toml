@@ -1,10 +1,10 @@
 [package]
 version = "0.1.0"
-name = "fibonacci-program"
+name = "noninclusion-program"
 edition = "2021"
 
 [dependencies]
 alloy-sol-types = { workspace = true }
 sp1-zkvm = "4.1.7"
-fibonacci-lib = { path = "../lib" }
+noninclusion-lib = { path = "../lib" }
 substrate-bn = { workspace = true }
