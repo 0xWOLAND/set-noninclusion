@@ -4500,6 +4500,7 @@ dependencies = [
 [[package]]
 name = "sp1-hash2curve"
 version = "0.1.0"
+source = "git+https://github.com/0xWOLAND/sp1-hash2curve#a71b3931f3ea3dc0a71a542db28b797b8ce6a084"
 dependencies = [
  "anyhow",
  "digest 0.10.7",
