@@ -17,10 +17,10 @@ name = "vkey"
 path = "src/bin/vkey.rs"
 
 [dependencies]
-sp1-sdk = "4.1.7"
+sp1-sdk = { workspace = true }
 substrate-bn = { workspace = true }
 noninclusion-lib = { path = "../lib" }
 dotenv = "0.15.0"
 
 [build-dependencies]
-sp1-build = "4.1.7"
+sp1-build = { workspace = true }

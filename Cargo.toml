@@ -8,4 +8,9 @@ resolver = "2"
 
 [workspace.dependencies]
 alloy-sol-types = "0.8"
-substrate-bn = { package = "substrate-bn-succinct", git = "https://github.com/sp1-patches/bn", branch = "release-v0.6.0" }
+sp1-lib = "4.1.7"
+sp1-zkvm = "4.1.7"
+sp1-sdk = "4.1.7"
+sp1-build = "4.1.7"
+substrate-bn = { package = "substrate-bn-succinct", git = "https://github.com/0xWOLAND/bn", branch = "release-v0.7.0" }
+
