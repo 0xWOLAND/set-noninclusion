@@ -2682,7 +2682,7 @@ dependencies = [
  "anyhow",
  "sha2 0.10.8 (git+https://github.com/sp1-patches/RustCrypto-hashes?branch=ratan/patch-sha2-v0.10.8)",
  "sp1-hash2curve",
- "substrate-bn-succinct",
+ "substrate-bn-succinct 0.6.0 (git+https://github.com/0xWOLAND/bn?branch=release-v0.7.0)",
 ]
 
 [[package]]
@@ -2691,8 +2691,9 @@ version = "0.1.0"
 dependencies = [
  "alloy-sol-types",
  "noninclusion-lib",
+ "sp1-verifier",
  "sp1-zkvm",
- "substrate-bn-succinct",
+ "substrate-bn-succinct 0.6.0 (git+https://github.com/0xWOLAND/bn?branch=release-v0.7.0)",
 ]
 
 [[package]]
@@ -2703,7 +2704,7 @@ dependencies = [
  "noninclusion-lib",
  "sp1-build",
  "sp1-sdk",
- "substrate-bn-succinct",
+ "substrate-bn-succinct 0.6.0 (git+https://github.com/0xWOLAND/bn?branch=release-v0.7.0)",
 ]
 
 [[package]]
@@ -4509,8 +4510,18 @@ dependencies = [
  "num-integer",
  "rand 0.8.5",
  "sha2 0.10.8 (git+https://github.com/sp1-patches/RustCrypto-hashes?branch=ratan/patch-sha2-v0.10.8)",
- "substrate-bn-succinct",
+ "substrate-bn-succinct 0.6.0 (git+https://github.com/0xWOLAND/bn?branch=release-v0.7.0)",
  "subtle",
+]
+
+[[package]]
+name = "sp1-lib"
+version = "3.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a5729da1b05d56c01457e5ecabdc77f1cc941df23f2921163a2f325aec22428"
+dependencies = [
+ "bincode",
+ "serde",
 ]
 
 [[package]]
@@ -4806,6 +4817,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "sp1-verifier"
+version = "4.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b4d4609dbb9662e4619e35666ea5fd89ee3dee59c2822b9c9c09dc25f585e3be"
+dependencies = [
+ "cfg-if",
+ "hex",
+ "lazy_static",
+ "sha2 0.10.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "substrate-bn-succinct 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "thiserror 2.0.12",
+]
+
+[[package]]
 name = "sp1-zkvm"
 version = "4.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4817,7 +4842,7 @@ dependencies = [
  "libm",
  "rand 0.8.5",
  "sha2 0.10.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "sp1-lib",
+ "sp1-lib 4.1.7",
  "sp1-primitives",
 ]
 
@@ -4892,6 +4917,23 @@ dependencies = [
 [[package]]
 name = "substrate-bn-succinct"
 version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "114c855c26ad0594c830129cb868552fb41415603a6133276c2ecdd9e5ef4255"
+dependencies = [
+ "bytemuck",
+ "byteorder",
+ "cfg-if",
+ "crunchy",
+ "lazy_static",
+ "num-bigint 0.4.6",
+ "rand 0.8.5",
+ "rustc-hex",
+ "sp1-lib 3.4.0",
+]
+
+[[package]]
+name = "substrate-bn-succinct"
+version = "0.6.0"
 source = "git+https://github.com/0xWOLAND/bn?branch=release-v0.7.0#d7cc2205762bec89999970f2ef32e2081fa32209"
 dependencies = [
  "bytemuck",
@@ -4902,7 +4944,7 @@ dependencies = [
  "num-bigint 0.4.6",
  "rand 0.8.5",
  "rustc-hex",
- "sp1-lib",
+ "sp1-lib 4.1.7",
 ]
 
 [[package]]
