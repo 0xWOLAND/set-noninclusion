@@ -33,23 +33,15 @@ pub fn check_non_membership(
     r: Fr,
     s_prev: AffineG1,
 ) -> Result<AffineG1, String> {
-    println!("alpha");
     let alpha = eval_poly_at_roots(roots, v);
     if alpha.is_zero() {
         return Err("Value is a member of the inserted set.".into());
     }
 
-    println!("vieta");
     let coeffs = vieta(roots);
-    println!("commit");
     let p_i = commit(&coeffs, AffineG1::default(), r);
-    println!("p_prime");
-    let p_prime = p_i - AffineG1::default() * alpha;
-
-    println!("hash");
-    let h = hash_points(&s_prev, &p_prime)?;
-    println!("done");
-    Ok(s_prev * h + p_prime)
+    let h = hash_points(&p_i, &s_prev)?;
+    Ok(s_prev * h + p_i)
 }
 
 fn hash_points(p1: &AffineG1, p2: &AffineG1) -> Result<Fr, String> {
