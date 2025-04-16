@@ -1,6 +1,8 @@
 use std::path::Path;
 
-use sp1_sdk::{include_elf, EnvProver, ProverClient, SP1ProvingKey, SP1Stdin};
+use sp1_sdk::{
+    include_elf, EnvProver, ProverClient, SP1ProofWithPublicValues, SP1ProvingKey, SP1Stdin,
+};
 use substrate_bn::{AffineG1, Fq, Fr};
 
 /// The ELF (executable and linkable format) file for the Succinct RISC-V zkVM.
@@ -85,14 +87,20 @@ fn run_epoch(
     let a_next = AffineG1::new(a_next_x, a_next_y).unwrap();
 
     // Generate the proof
-    let proof = client
-        .prove(&pk, &stdin)
-        .run()
-        .expect("failed to generate proof");
+    let path = format!("../proofs/proof_{}.bin", params.epoch);
+    let proof = if Path::new(&path).exists() {
+        SP1ProofWithPublicValues::load(Path::new(&path)).expect("failed to load proof")
+    } else {
+        let proof = client
+            .prove(pk, stdin)
+            .run()
+            .expect("failed to generate proof");
 
-    proof
-        .save(Path::new(&format!("../proofs/proof_{}.bin", params.epoch)))
-        .unwrap_or_else(|_| panic!("failed to save proof for epoch {}", params.epoch));
+        proof
+            .save(Path::new(&path))
+            .unwrap_or_else(|_| panic!("failed to save proof for epoch {}", params.epoch));
+        proof
+    };
 
     let accumulator = (a_next, s_next);
     let proof_data = (proof.bytes(), proof.public_values.to_vec());
