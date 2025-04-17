@@ -22,10 +22,11 @@ struct EpochParams {
 
 fn run_epoch(
     params: EpochParams,
-    stdin: &mut SP1Stdin,
     client: &EnvProver,
     pk: &SP1ProvingKey,
 ) -> ((AffineG1, AffineG1), (Vec<u8>, Vec<u8>)) {
+    let mut stdin = SP1Stdin::new();
+
     let mut a_prev_bytes = vec![0u8; 64];
     params
         .a_prev
@@ -92,7 +93,8 @@ fn run_epoch(
         SP1ProofWithPublicValues::load(Path::new(&path)).expect("failed to load proof")
     } else {
         let proof = client
-            .prove(pk, stdin)
+            .prove(pk, &stdin)
+            .groth16()
             .run()
             .expect("failed to generate proof");
 
@@ -115,7 +117,6 @@ fn main() {
 
     let client = ProverClient::from_env();
     let (pk, _) = client.setup(NONINCLUSION_ELF);
-    let mut stdin = SP1Stdin::new();
 
     let mut a_prev = AffineG1::default();
     let mut s_prev = AffineG1::default();
@@ -141,8 +142,7 @@ fn main() {
             epoch,
         };
 
-        let ((a_next, s_next), (proof_bytes, public_inputs)) =
-            run_epoch(params, &mut stdin, &client, &pk);
+        let ((a_next, s_next), (proof_bytes, public_inputs)) = run_epoch(params, &client, &pk);
 
         a_prev = a_next;
         s_prev = s_next;
