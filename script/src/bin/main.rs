@@ -10,7 +10,6 @@ use substrate_bn::{AffineG1, Fq, Fr};
 pub const NONINCLUSION_ELF: &[u8] = include_elf!("noninclusion-program");
 pub const FOLD_ELF: &[u8] = include_elf!("fold-program");
 
-/// Parameters for running an epoch
 struct EpochParams {
     a_prev: AffineG1,
     s_prev: AffineG1,
@@ -81,7 +80,7 @@ fn run_epoch(
     params: EpochParams,
     client: &EnvProver,
     pk: &SP1ProvingKey,
-) -> ((AffineG1, AffineG1), (Vec<u8>, Vec<u8>)) {
+) -> ((AffineG1, AffineG1), SP1ProofWithPublicValues) {
     let mut stdin = SP1Stdin::new();
 
     let mut a_prev_bytes = vec![0u8; 64];
@@ -151,11 +150,13 @@ fn run_epoch(
         params.epoch
     );
     let proof = if Path::new(&path).exists() {
+        println!("Proof already exists");
         SP1ProofWithPublicValues::load(Path::new(&path)).expect("failed to load proof")
     } else {
+        println!("Generating proof");
         let proof = client
             .prove(pk, &stdin)
-            .groth16()
+            .compressed()
             .run()
             .expect("failed to generate proof");
 
@@ -166,9 +167,8 @@ fn run_epoch(
     };
 
     let accumulator = (a_next, s_next);
-    let proof_data = (proof.bytes(), proof.public_values.to_vec());
 
-    (accumulator, proof_data)
+    (accumulator, proof)
 }
 
 fn main() {
@@ -186,7 +186,7 @@ fn main() {
     let v = Fr::from_str("100").unwrap();
     let r = Fr::from_str("420").unwrap();
 
-    let mut fold_proof_data = Vec::new();
+    let mut fold_proof = Vec::new();
 
     for epoch in 1..3 {
         let roots = (1..=n)
@@ -203,12 +203,12 @@ fn main() {
             epoch,
         };
 
-        let ((a_next, s_next), (proof_bytes, public_inputs)) = run_epoch(params, &client, &pk);
+        let ((a_next, s_next), proof) = run_epoch(params, &client, &pk);
 
         a_prev = a_next;
         s_prev = s_next;
 
-        fold_proof_data.push((proof_bytes, public_inputs));
+        fold_proof.push(proof);
     }
 
     let (pk, vk) = client.setup(FOLD_ELF);
@@ -217,10 +217,11 @@ fn main() {
     stdin.write(&n);
     stdin.write(&vk);
 
-    for (proof_bytes, public_inputs) in fold_proof_data {
-        stdin.write_slice(&proof_bytes);
-        stdin.write_slice(&public_inputs);
+    for proof in fold_proof {
+        stdin.write_slice(&proof.bytes());
+        stdin.write_slice(&proof.public_values.to_vec());
     }
 
     let (output, _) = client.execute(FOLD_ELF, &stdin).run().unwrap();
+    println!("Proof done!");
 }
