@@ -51,11 +51,15 @@ impl EpochParams {
         let mut r_bytes = [0u8; 32];
         self.r.to_big_endian(&mut r_bytes).unwrap();
 
-        let root_bytes_iter = self.roots.iter().flat_map(|root| {
-            let mut buf = [0u8; 32];
-            root.to_big_endian(&mut buf).unwrap();
-            buf
-        });
+        let root_bytes_iter: Vec<u8> = self
+            .roots
+            .iter()
+            .flat_map(|root| {
+                let mut buf = [0u8; 32];
+                root.to_big_endian(&mut buf).unwrap();
+                buf
+            })
+            .collect();
 
         let result = hasher
             .chain_update(a_prev_bytes)
@@ -63,7 +67,7 @@ impl EpochParams {
             .chain_update(self.n.to_be_bytes())
             .chain_update(v_bytes)
             .chain_update(r_bytes)
-            .chain_update(root_bytes_iter.collect::<Vec<u8>>())
+            .chain_update(root_bytes_iter)
             .chain_update(self.epoch.to_be_bytes())
             .finalize();
 
