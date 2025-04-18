@@ -1,5 +1,6 @@
 use std::path::Path;
 
+use sha2::{digest::Update, Digest, Sha256};
 use sp1_sdk::{
     include_elf, EnvProver, ProverClient, SP1ProofWithPublicValues, SP1ProvingKey, SP1Stdin,
 };
@@ -18,6 +19,58 @@ struct EpochParams {
     r: Fr,
     roots: Vec<Fr>,
     epoch: u32,
+}
+
+impl EpochParams {
+    fn hash(&self) -> [u8; 32] {
+        let hasher = Sha256::new();
+
+        let mut a_prev_bytes = [0u8; 64];
+        self.a_prev
+            .x()
+            .to_big_endian(&mut a_prev_bytes[..32])
+            .unwrap();
+        self.a_prev
+            .y()
+            .to_big_endian(&mut a_prev_bytes[32..])
+            .unwrap();
+
+        let mut s_prev_bytes = [0u8; 64];
+        self.s_prev
+            .x()
+            .to_big_endian(&mut s_prev_bytes[..32])
+            .unwrap();
+        self.s_prev
+            .y()
+            .to_big_endian(&mut s_prev_bytes[32..])
+            .unwrap();
+
+        let mut v_bytes = [0u8; 32];
+        self.v.to_big_endian(&mut v_bytes).unwrap();
+
+        let mut r_bytes = [0u8; 32];
+        self.r.to_big_endian(&mut r_bytes).unwrap();
+
+        let root_bytes_iter = self.roots.iter().flat_map(|root| {
+            let mut buf = [0u8; 32];
+            root.to_big_endian(&mut buf).unwrap();
+            buf
+        });
+
+        let result = hasher
+            .chain_update(a_prev_bytes)
+            .chain_update(s_prev_bytes)
+            .chain_update(self.n.to_be_bytes())
+            .chain_update(v_bytes)
+            .chain_update(r_bytes)
+            .chain_update(root_bytes_iter.collect::<Vec<u8>>())
+            .chain_update(self.epoch.to_be_bytes())
+            .finalize();
+
+        let mut hash = [0u8; 32];
+        hash.copy_from_slice(&result);
+        hash
+    }
 }
 
 fn run_epoch(
@@ -88,7 +141,11 @@ fn run_epoch(
     let a_next = AffineG1::new(a_next_x, a_next_y).unwrap();
 
     // Generate the proof
-    let path = format!("../proofs/proof_{}.bin", params.epoch);
+    let path = format!(
+        "../proofs/{}_ep{}.bin",
+        hex::encode(params.hash()),
+        params.epoch
+    );
     let proof = if Path::new(&path).exists() {
         SP1ProofWithPublicValues::load(Path::new(&path)).expect("failed to load proof")
     } else {
