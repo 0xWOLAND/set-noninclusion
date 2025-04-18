@@ -9,7 +9,7 @@ resolver = "2"
 [workspace.dependencies]
 alloy-sol-types = "0.8"
 sp1-lib = { version = "4.1.7", default-features = false }
-sp1-zkvm = { version = "4.1.7", default-features = false, features = ["lib", "embedded"] }
+sp1-zkvm = { version = "4.1.7",  features = ["lib", "embedded", "verify"] }
 sp1-sdk = { version = "4.1.7", default-features = false, features = ["network"]}
 sp1-build = { version = "4.1.7", default-features = false }
 sp1-verifier = { version = "4.1.7", default-features = false }

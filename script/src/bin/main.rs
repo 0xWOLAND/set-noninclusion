@@ -2,7 +2,8 @@ use std::path::Path;
 
 use sha2::{digest::Update, Digest, Sha256};
 use sp1_sdk::{
-    include_elf, EnvProver, ProverClient, SP1ProofWithPublicValues, SP1ProvingKey, SP1Stdin,
+    include_elf, EnvProver, HashableKey, ProverClient, SP1ProofWithPublicValues, SP1ProvingKey,
+    SP1Stdin, SP1VerifyingKey,
 };
 use substrate_bn::{AffineG1, Fq, Fr};
 
@@ -78,9 +79,13 @@ impl EpochParams {
 
 fn run_epoch(
     params: EpochParams,
-    client: &EnvProver,
-    pk: &SP1ProvingKey,
-) -> ((AffineG1, AffineG1), SP1ProofWithPublicValues) {
+) -> (
+    (AffineG1, AffineG1),
+    SP1ProofWithPublicValues,
+    SP1VerifyingKey,
+) {
+    let client = ProverClient::from_env();
+    let (pk, vk) = client.setup(NONINCLUSION_ELF);
     let mut stdin = SP1Stdin::new();
 
     let mut a_prev_bytes = vec![0u8; 64];
@@ -155,7 +160,7 @@ fn run_epoch(
     } else {
         println!("Generating proof");
         let proof = client
-            .prove(pk, &stdin)
+            .prove(&pk, &stdin)
             .compressed()
             .run()
             .expect("failed to generate proof");
@@ -168,16 +173,13 @@ fn run_epoch(
 
     let accumulator = (a_next, s_next);
 
-    (accumulator, proof)
+    (accumulator, proof, vk)
 }
 
 fn main() {
     // Setup the logger.
     sp1_sdk::utils::setup_logger();
     dotenv::dotenv().ok();
-
-    let client = ProverClient::from_env();
-    let (pk, _) = client.setup(NONINCLUSION_ELF);
 
     let mut a_prev = AffineG1::default();
     let mut s_prev = AffineG1::default();
@@ -186,7 +188,7 @@ fn main() {
     let v = Fr::from_str("100").unwrap();
     let r = Fr::from_str("420").unwrap();
 
-    let mut fold_proof = Vec::new();
+    let mut inputs = Vec::new();
 
     for epoch in 1..3 {
         let roots = (1..=n)
@@ -203,23 +205,32 @@ fn main() {
             epoch,
         };
 
-        let ((a_next, s_next), proof) = run_epoch(params, &client, &pk);
+        let ((a_next, s_next), proof, vk) = run_epoch(params);
 
         a_prev = a_next;
         s_prev = s_next;
 
-        fold_proof.push(proof);
+        inputs.push((proof, vk));
     }
 
-    let (pk, vk) = client.setup(FOLD_ELF);
+    let client = ProverClient::from_env();
+    let (pk, _) = client.setup(FOLD_ELF);
     let mut stdin = SP1Stdin::new();
 
-    stdin.write(&n);
-    stdin.write(&vk);
+    let (vkeys, public_values) = inputs
+        .iter()
+        .map(|(proof, vk)| (vk.hash_u32(), proof.public_values.to_vec()))
+        .unzip::<_, _, Vec<_>, Vec<_>>();
 
-    for proof in fold_proof {
-        stdin.write_slice(&proof.bytes());
-        stdin.write_slice(&proof.public_values.to_vec());
+    stdin.write::<Vec<[u32; 8]>>(&vkeys);
+    stdin.write::<Vec<Vec<u8>>>(&public_values);
+
+    for (input, vk) in inputs {
+        let proof = input
+            .proof
+            .try_as_compressed()
+            .expect("failed to convert proof to compressed");
+        stdin.write_proof(*proof, vk.vk);
     }
 
     let (output, _) = client.execute(FOLD_ELF, &stdin).run().unwrap();

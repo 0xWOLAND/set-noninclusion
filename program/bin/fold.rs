@@ -1,21 +1,21 @@
 #![no_main]
 sp1_zkvm::entrypoint!(main);
 
-use sp1_verifier::Groth16Verifier;
+use sha2::{Digest, Sha256};
 
 fn main() {
-    let n = sp1_zkvm::io::read::<u32>();
+    // Read the verification keys.
+    let vkeys = sp1_zkvm::io::read::<Vec<[u32; 8]>>();
 
-    let groth16_vk = *sp1_verifier::GROTH16_VK_BYTES;
-    let sp1_vkey_hash: String = sp1_zkvm::io::read();
+    // Read the public values.
+    let public_values = sp1_zkvm::io::read::<Vec<Vec<u8>>>();
 
-    let proof_results = (0..n)
-        .map(|_| {
-            let proof = sp1_zkvm::io::read_vec();
-            let public_inputs = sp1_zkvm::io::read_vec();
-            Groth16Verifier::verify(&proof, &public_inputs, &sp1_vkey_hash, groth16_vk)
-        })
-        .collect::<Vec<_>>();
-
-    assert!(proof_results.iter().all(|result| result.is_ok()));
+    // Verify the proofs.
+    assert_eq!(vkeys.len(), public_values.len());
+    for i in 0..vkeys.len() {
+        let vkey = &vkeys[i];
+        let public_values = &public_values[i];
+        let public_values_digest = Sha256::digest(public_values);
+        sp1_zkvm::lib::verify::verify_sp1_proof(vkey, &public_values_digest.into());
+    }
 }
