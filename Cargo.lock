@@ -279,7 +279,7 @@ dependencies = [
  "alloy-rlp",
  "alloy-serde",
  "alloy-sol-types",
- "itertools 0.14.0",
+ "itertools 0.13.0",
  "serde",
  "serde_json",
  "thiserror 2.0.12",
@@ -782,6 +782,12 @@ checksum = "4c7f02d4ea65f2c1853089ffd8d2787bdbc63de2f0d29dedbcf8ccdfa0ccd4cf"
 
 [[package]]
 name = "base64"
+version = "0.13.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9e1b586273c5702936fe7b7d6896644d8be71e6314cfe09d3167c95f712589e8"
+
+[[package]]
+name = "base64"
 version = "0.22.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
@@ -1129,9 +1135,15 @@ dependencies = [
  "encode_unicode",
  "libc",
  "once_cell",
- "unicode-width",
+ "unicode-width 0.2.0",
  "windows-sys 0.59.0",
 ]
+
+[[package]]
+name = "const-default"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b396d1f76d455557e1218ec8066ae14bba60b4b36ecd55577ba979f5db7ecaa"
 
 [[package]]
 name = "const-hex"
@@ -1217,6 +1229,12 @@ name = "crc-catalog"
 version = "2.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "19d374276b40fb8bbdee95aef7c7fa6b5316ec764510eb64b8dd0e2ed0d7e7f5"
+
+[[package]]
+name = "critical-section"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "790eea4361631c5e7d22598ecd5723ff611904e3344ce8720784c93e3d83d40b"
 
 [[package]]
 name = "crossbeam-channel"
@@ -1570,6 +1588,18 @@ dependencies = [
  "sec1",
  "subtle",
  "zeroize",
+]
+
+[[package]]
+name = "embedded-alloc"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8f2de9133f68db0d4627ad69db767726c99ff8585272716708227008d3f1bddd"
+dependencies = [
+ "const-default",
+ "critical-section",
+ "linked_list_allocator",
+ "rlsf",
 ]
 
 [[package]]
@@ -2374,7 +2404,7 @@ dependencies = [
  "console",
  "number_prefix",
  "portable-atomic",
- "unicode-width",
+ "unicode-width 0.2.0",
  "web-time",
 ]
 
@@ -2540,6 +2570,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "linked_list_allocator"
+version = "0.10.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9afa463f5405ee81cdb9cc2baf37e08ec7e4c8209442b5d72c04cfb2cd6e6286"
+
+[[package]]
 name = "linux-raw-sys"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2682,7 +2718,7 @@ dependencies = [
  "anyhow",
  "sha2 0.10.8 (git+https://github.com/sp1-patches/RustCrypto-hashes?branch=ratan/patch-sha2-v0.10.8)",
  "sp1-hash2curve",
- "substrate-bn-succinct",
+ "substrate-bn-succinct 0.6.0 (git+https://github.com/0xWOLAND/bn?branch=release-v0.7.0)",
 ]
 
 [[package]]
@@ -2691,8 +2727,10 @@ version = "0.1.0"
 dependencies = [
  "alloy-sol-types",
  "noninclusion-lib",
+ "sha2 0.10.8 (git+https://github.com/sp1-patches/RustCrypto-hashes?branch=ratan/patch-sha2-v0.10.8)",
+ "sp1-verifier",
  "sp1-zkvm",
- "substrate-bn-succinct",
+ "substrate-bn-succinct 0.6.0 (git+https://github.com/0xWOLAND/bn?branch=release-v0.7.0)",
 ]
 
 [[package]]
@@ -2700,10 +2738,12 @@ name = "noninclusion-script"
 version = "0.1.0"
 dependencies = [
  "dotenv",
+ "hex",
  "noninclusion-lib",
+ "sha2 0.10.8 (git+https://github.com/sp1-patches/RustCrypto-hashes?branch=ratan/patch-sha2-v0.10.8)",
  "sp1-build",
  "sp1-sdk",
- "substrate-bn-succinct",
+ "substrate-bn-succinct 0.6.0 (git+https://github.com/0xWOLAND/bn?branch=release-v0.7.0)",
 ]
 
 [[package]]
@@ -3748,7 +3788,7 @@ version = "0.12.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d19c46a6fdd48bc4dab94b6103fccc55d34c67cc0ad04653aad4ea2a07cd7bbb"
 dependencies = [
- "base64",
+ "base64 0.22.1",
  "bytes",
  "futures-core",
  "futures-util",
@@ -3834,6 +3874,18 @@ checksum = "bb919243f34364b6bd2fc10ef797edbfa75f33c252e7998527479c6d6b47e1ec"
 dependencies = [
  "bytes",
  "rustc-hex",
+]
+
+[[package]]
+name = "rlsf"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "222fb240c3286247ecdee6fa5341e7cdad0ffdf8e7e401d9937f2d58482a20bf"
+dependencies = [
+ "cfg-if",
+ "const-default",
+ "libc",
+ "svgbobdoc",
 ]
 
 [[package]]
@@ -4509,8 +4561,18 @@ dependencies = [
  "num-integer",
  "rand 0.8.5",
  "sha2 0.10.8 (git+https://github.com/sp1-patches/RustCrypto-hashes?branch=ratan/patch-sha2-v0.10.8)",
- "substrate-bn-succinct",
+ "substrate-bn-succinct 0.6.0 (git+https://github.com/0xWOLAND/bn?branch=release-v0.7.0)",
  "subtle",
+]
+
+[[package]]
+name = "sp1-lib"
+version = "3.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a5729da1b05d56c01457e5ecabdc77f1cc941df23f2921163a2f325aec22428"
+dependencies = [
+ "bincode",
+ "serde",
 ]
 
 [[package]]
@@ -4806,18 +4868,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "sp1-verifier"
+version = "4.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b4d4609dbb9662e4619e35666ea5fd89ee3dee59c2822b9c9c09dc25f585e3be"
+dependencies = [
+ "cfg-if",
+ "hex",
+ "lazy_static",
+ "sha2 0.10.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "substrate-bn-succinct 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "thiserror 2.0.12",
+]
+
+[[package]]
 name = "sp1-zkvm"
 version = "4.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "92e382d2a6c183d602393e58881887fe91df32cc65965dd0be1f64e6fd689d73"
 dependencies = [
  "cfg-if",
+ "critical-section",
+ "embedded-alloc",
  "getrandom 0.2.15",
  "lazy_static",
  "libm",
+ "p3-baby-bear",
+ "p3-field",
  "rand 0.8.5",
  "sha2 0.10.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "sp1-lib",
+ "sp1-lib 4.1.7",
  "sp1-primitives",
 ]
 
@@ -4892,6 +4972,23 @@ dependencies = [
 [[package]]
 name = "substrate-bn-succinct"
 version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "114c855c26ad0594c830129cb868552fb41415603a6133276c2ecdd9e5ef4255"
+dependencies = [
+ "bytemuck",
+ "byteorder",
+ "cfg-if",
+ "crunchy",
+ "lazy_static",
+ "num-bigint 0.4.6",
+ "rand 0.8.5",
+ "rustc-hex",
+ "sp1-lib 3.4.0",
+]
+
+[[package]]
+name = "substrate-bn-succinct"
+version = "0.6.0"
 source = "git+https://github.com/0xWOLAND/bn?branch=release-v0.7.0#d7cc2205762bec89999970f2ef32e2081fa32209"
 dependencies = [
  "bytemuck",
@@ -4902,7 +4999,7 @@ dependencies = [
  "num-bigint 0.4.6",
  "rand 0.8.5",
  "rustc-hex",
- "sp1-lib",
+ "sp1-lib 4.1.7",
 ]
 
 [[package]]
@@ -4910,6 +5007,19 @@ name = "subtle"
 version = "2.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
+
+[[package]]
+name = "svgbobdoc"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f2c04b93fc15d79b39c63218f15e3fdffaa4c227830686e3b7c5f41244eb3e50"
+dependencies = [
+ "base64 0.13.1",
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+ "unicode-width 0.1.14",
+]
 
 [[package]]
 name = "syn"
@@ -5240,7 +5350,7 @@ dependencies = [
  "async-stream",
  "async-trait",
  "axum",
- "base64",
+ "base64 0.22.1",
  "bytes",
  "h2",
  "http",
@@ -5462,6 +5572,12 @@ name = "unicode-ident"
 version = "1.0.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5a5f39404a5da50712a4c1eecf25e90dd62b613502b7e925fd4e4d19b5c96512"
+
+[[package]]
+name = "unicode-width"
+version = "0.1.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7dd6e30e90baa6f72411720665d41d89b9a3d039dc45b8faea1ddd07f617f6af"
 
 [[package]]
 name = "unicode-width"

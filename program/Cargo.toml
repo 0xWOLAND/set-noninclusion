@@ -3,8 +3,18 @@ version = "0.1.0"
 name = "noninclusion-program"
 edition = "2021"
 
+[[bin]]
+name = "noninclusion-program"
+path = "bin/noninclusion.rs"
+
+[[bin]]
+name = "fold-program"
+path = "bin/fold.rs"
+
 [dependencies]
 alloy-sol-types = { workspace = true }
 sp1-zkvm = { workspace = true }
 noninclusion-lib = { path = "../lib" }
 substrate-bn = { workspace = true }
+sp1-verifier = { workspace = true }
+sha2 = { workspace = true }

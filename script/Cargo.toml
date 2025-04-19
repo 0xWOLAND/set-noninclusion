@@ -8,19 +8,13 @@ default-run = "noninclusion"
 name = "noninclusion"
 path = "src/bin/main.rs"
 
-[[bin]]
-name = "evm"
-path = "src/bin/evm.rs"
-
-[[bin]]
-name = "vkey"
-path = "src/bin/vkey.rs"
-
 [dependencies]
 sp1-sdk = { workspace = true }
 substrate-bn = { workspace = true }
 noninclusion-lib = { path = "../lib" }
+sha2 = { workspace = true }
 dotenv = "0.15.0"
+hex = "0.4.3"
 
 [build-dependencies]
 sp1-build = { workspace = true }

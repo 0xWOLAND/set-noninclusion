@@ -1,5 +1,12 @@
-use sp1_build::build_program_with_args;
+use sp1_build::{build_program_with_args, BuildArgs};
 
 fn main() {
-    build_program_with_args("../program", Default::default())
+    let args = BuildArgs {
+        binaries: vec![
+            "noninclusion-program".to_string(),
+            "fold-program".to_string(),
+        ],
+        ..Default::default()
+    };
+    build_program_with_args("../program", args);
 }
